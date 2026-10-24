@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SiteSensorEvent_v1",
+  "description": "Near real-time events from site sensors and daily progress packs. event_ts is the business time; ingested_at is when we received it.",
+  "type": "object",
+  "required": ["event_id", "project_id", "event_ts", "ingested_at", "event_type"],
+  "properties": {
+    "event_id": { "type": "string" },
+    "project_id": { "type": "string" },
+    "event_ts": { "type": "string", "format": "date-time" },
+    "ingested_at": { "type": "string", "format": "date-time" },
+    "event_type": {
+      "type": "string",
+      "enum": ["progress_update", "weather", "equipment_stop", "quality_check", "material_delay"]
+    },
+    "payload": { "type": "object" }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RoadProjectContract_v1",
+  "description": "Contract for project master records ingested from contractor exports and internal PM systems. Region spellings are normalized downstream; raw values are preserved.",
+  "type": "object",
+  "required": ["project_id", "contractor_id", "planned_start", "planned_end", "budget_azn", "source_system", "extracted_at"],
+  "properties": {
+    "project_id": { "type": "string", "minLength": 3, "maxLength": 32 },
+    "name": { "type": ["string", "null"] },
+    "contractor_id": { "type": "string" },
+    "region_raw": { "type": ["string", "null"] },
+    "project_type": {
+      "type": ["string", "null"],
+      "enum": ["road", "highway", "bridge", "tunnel", null]
+    },
+    "planned_start": { "type": "string", "format": "date" },
+    "planned_end": { "type": "string", "format": "date" },
+    "actual_start": { "type": ["string", "null"], "format": "date" },
+    "actual_end": { "type": ["string", "null"], "format": "date" },
+    "budget_azn": { "type": "number", "exclusiveMinimum": 0 },
+    "spent_azn": { "type": ["number", "null"], "minimum": 0 },
+    "progress_pct": { "type": ["number", "null"], "minimum": 0, "maximum": 120 },
+    "quality_score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+    "source_system": { "type": "string" },
+    "extracted_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": true
+}
