@@ -1,24 +1,35 @@
 # Construction Data Reliability Platform
 
-Multi-source reliability pipeline + near real-time delay risk for road / highway / bridge programmes.
+**Data engineering platform for road, highway and bridge programmes** — multi-source batch reliability pipeline plus near real-time delay risk scoring.
 
-This is not another “ingest CSV → Postgres → dashboard” tutorial. The design assumes the mess that actually shows up on infrastructure projects: conflicting region spellings, duplicate project ids from contractor vs PM systems, missing quality scores, late daily packs, and the need for a risk number a site engineer can argue with.
+Built for the kind of data that shows up on real infrastructure work: conflicting region spellings, duplicate project IDs across contractor and PM systems, missing quality scores, late daily progress packs, and a risk score that a site engineer can actually challenge.
 
-I work with construction-side data (see also [road-project-delay-analysis](https://github.com/memmedzadev81-max/road-project-delay-analysis) and [road-delay-risk-ml](https://github.com/memmedzadev81-max/road-delay-risk-ml)). This repo is the engineering layer those analyses need underneath them.
+Related analytical work: [road-project-delay-analysis](https://github.com/memmedzadev81-max/road-project-delay-analysis) · [road-delay-risk-ml](https://github.com/memmedzadev81-max/road-delay-risk-ml)
 
 ---
 
-## What you get
+## Features
 
-| Area | Capability |
-|------|------------|
-| Contracts | JSON Schema for projects & sensor events; rejects → quarantine files |
-| Quality gates | Critical + warning checks; configurable pass threshold |
-| Batch pipeline | Normalize → dedupe → SCD2 dim → daily facts with late-arrival flags |
-| Risk model | Explainable weighted score (weights in config, feature breakdown returned) |
-| Streaming | Redpanda/Kafka path + **offline fallback** on the same seed events |
-| Serving | Small FastAPI surface for snapshot/event scoring |
-| Local warehouse | DuckDB by default; Postgres DDL included |
+| Area | What it does |
+|------|----------------|
+| **Data contracts** | JSON Schema validation for projects and sensor events; failed rows go to quarantine files |
+| **Quality gates** | Critical and warning checks with a configurable pass threshold |
+| **Batch pipeline** | Normalize → deduplicate → SCD Type 2 dimension → daily facts with late-arrival flags |
+| **Risk model** | Explainable weighted score; weights live in config; feature breakdown returned with every score |
+| **Streaming** | Kafka-compatible path (Redpanda) with an offline fallback on the same event seed |
+| **API** | FastAPI endpoints for snapshot and event scoring |
+| **Warehouse** | DuckDB by default for zero-setup local runs; Postgres DDL included for shared environments |
+
+---
+
+## Tech stack
+
+- **Python 3.11+** — pandas, PyArrow, DuckDB, jsonschema
+- **Contracts & quality** — JSON Schema, custom quality gates (Great Expectations available for extension)
+- **Streaming** — Redpanda / Kafka (confluent-kafka), offline JSONL path
+- **Serving** — FastAPI + Uvicorn
+- **Infra (optional)** — Docker Compose (Postgres 16, Redpanda)
+- **Tooling** — Make, pytest, ruff
 
 ---
 
@@ -29,69 +40,63 @@ git clone https://github.com/memmedzadev81-max/construction-data-reliability-pla
 cd construction-data-reliability-platform
 
 python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# sample dirty data
-make raw
-
-# quality report
-make quality
-
-# full batch pipeline (DuckDB warehouse under data/warehouse/)
-make batch
-
-# streaming demo (works without Docker via offline path)
-make stream
+make raw       # generate realistic dirty sample data
+make quality   # run quality gates
+make batch     # full reliability pipeline → DuckDB + parquet
+make stream    # risk scoring (works without Docker)
 ```
 
-Optional infrastructure:
+Optional services:
 
 ```bash
-make up      # Postgres 16 + Redpanda
-make stream  # will publish/consume if broker is healthy
-make risk    # API on http://localhost:8080/docs
+make up        # Postgres 16 + Redpanda
+make stream    # publish + consume when the broker is up
+make risk      # API at http://localhost:8080/docs
 make down
 ```
 
 ---
 
-## Layout
+## Repository layout
 
 ```
-config/           settings + data contracts
-data/raw          generated sample extracts (gitignored outputs under processed/)
-docs/             architecture + decision log
-sql/ddl           Postgres bootstrap
-src/batch         sample generator + reliability pipeline
-src/contracts     schema validation
-src/models        explainable risk scoring
-src/quality       gates
-src/streaming     producer, consumer, API, offline demo
+config/             settings.yaml + data contracts
+data/raw            sample extracts (generated)
+data/reference      region normalization map
+docs/               architecture and decision log
+sql/ddl             Postgres bootstrap scripts
+src/batch           sample generator + reliability pipeline
+src/contracts       schema validation
+src/models          explainable risk scoring
+src/quality         quality gates
+src/streaming       producer, consumer, API, offline demo
 tests/
 ```
 
 ---
 
-## Design choices (short)
+## Design decisions
 
-- **Quarantine by default** — one bad budget row should not kill the daily load for the whole programme.
-- **SCD2 on projects** — contractor, region and plan dates change; history matters for audit.
-- **Late data is flagged, not dropped** — construction events still happened.
-- **Same risk function in batch and stream** — comparable scores.
-- **DuckDB first** — clone and run without waiting on containers; Postgres when you need it.
+- **Quarantine by default** — a few bad budget rows must not block the daily load for the whole programme.
+- **SCD Type 2 on projects** — contractor, region and plan dates change; history is kept for audit.
+- **Late data is flagged, not dropped** — the site event still happened.
+- **One risk function for batch and stream** — scores stay comparable across paths.
+- **DuckDB first** — clone and run without waiting on containers; switch to Postgres when needed.
 
-Longer notes: [docs/architecture.md](docs/architecture.md), [docs/decisions.md](docs/decisions.md).
+More detail: [docs/architecture.md](docs/architecture.md) · [docs/decisions.md](docs/decisions.md)
 
 ---
 
-## Sample results you should see
+## Expected outputs
 
 After `make raw && make batch`:
 
-- Quarantine file under `data/staging/` for contract failures (zero budget, etc.)
+- Quarantine CSV under `data/staging/` for contract failures
 - `data/processed/projects_clean.parquet` and `fact_project_daily.parquet`
-- DuckDB tables `mart.dim_project`, `mart.fact_project_daily`, `meta.pipeline_run`
+- DuckDB tables: `mart.dim_project`, `mart.fact_project_daily`, `meta.pipeline_run`
 
 After `make stream`:
 
@@ -107,14 +112,20 @@ pytest -q tests/
 
 ---
 
-## Limits (honest)
+## Scope and limits
 
-- Sample volume is demo-sized (~120 projects, a few hundred events).
-- Risk weights are domain heuristics, not fitted coefficients.
-- Kafka security, multi-tenant isolation and full orchestrator DAGs are out of scope on purpose.
+- Sample scale is demo-sized (~120 projects, a few hundred events).
+- Risk weights are domain heuristics, not fitted model coefficients.
+- Kafka security, multi-tenant isolation and full orchestrator DAGs are intentionally out of scope.
 
-If you are adapting this to a live programme, start by replacing `data/raw` extracts and extending `data/reference/region_map.csv` — the pipeline code is meant to stay stable.
+To adapt to a live programme: replace extracts under `data/raw`, extend `data/reference/region_map.csv`, and keep the pipeline entrypoints stable.
 
 ---
 
-Vusal Mammadzade · [memmedzadev81-max](https://github.com/memmedzadev81-max)
+## License
+
+MIT — see [LICENSE](LICENSE)
+
+---
+
+**Vusal Mammadzade** · [github.com/memmedzadev81-max](https://github.com/memmedzadev81-max)
