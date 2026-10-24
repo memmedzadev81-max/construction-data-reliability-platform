@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.env
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Data & runtime
+data/processed/
+data/staging/
+data/warehouse/
+*.duckdb
+*.parquet
+!data/raw/**
+!data/reference/**
+logs/
+.tmp/
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+
+# Secrets (never commit)
+.env.local
+secrets/
+*.pem

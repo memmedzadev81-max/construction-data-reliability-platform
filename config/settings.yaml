@@ -1,0 +1,47 @@
+# Local defaults. Override with env vars in real deploys.
+
+project:
+  name: construction-data-reliability-platform
+  timezone: Asia/Baku
+
+paths:
+  raw: data/raw
+  staging: data/staging
+  processed: data/processed
+  warehouse: data/warehouse
+  contracts: config/contracts
+  reference: data/reference
+
+batch:
+  # How late can a record still be accepted into the current partition?
+  late_arrival_hours: 72
+  # Quarantine instead of failing the whole run when quality score < threshold
+  quarantine_on_fail: true
+  quality_pass_threshold: 0.85
+
+streaming:
+  bootstrap_servers: localhost:19092
+  topics:
+    sensor_events: construction.sensor.events
+    risk_scores: construction.risk.scores
+  consumer_group: risk-scorer-v1
+  # Events older than this are still processed but flagged
+  watermark_hours: 6
+
+warehouse:
+  # DuckDB for zero-setup local runs; switch to Postgres DSN in production
+  engine: duckdb
+  duckdb_path: data/warehouse/construction.duckdb
+  postgres_dsn: postgresql://construction:construction@localhost:5432/construction_dw
+
+risk_model:
+  # Simple, explainable rules + light statistical signals.
+  # Not a black-box model on purpose — site engineers must trust the score.
+  weights:
+    weather_severity: 0.25
+    progress_slip: 0.30
+    quality_trend: 0.20
+    contractor_history: 0.15
+    sensor_anomaly: 0.10
+  high_risk_threshold: 0.65
+  medium_risk_threshold: 0.40

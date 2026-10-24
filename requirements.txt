@@ -1,0 +1,27 @@
+# Core
+pandas>=2.1.0
+pyarrow>=14.0.0
+duckdb>=0.10.0
+pyyaml>=6.0
+python-dateutil>=2.8.2
+jsonschema>=4.20.0
+
+# Quality & validation
+great-expectations>=0.18.0
+
+# Streaming (local Redpanda / Kafka compatible)
+confluent-kafka>=2.3.0
+
+# API for risk scores (optional local service)
+fastapi>=0.110.0
+uvicorn>=0.27.0
+pydantic>=2.5.0
+
+# Testing & tooling
+pytest>=7.4.0
+pytest-cov>=4.1.0
+ruff>=0.3.0
+
+# Utils
+tqdm>=4.66.0
+rich>=13.7.0
